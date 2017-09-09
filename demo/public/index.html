@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SSE demo</title>
+	<meta name=viewport content="width=device-width, initial-scale=1, user-scalable=no">
+	<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+	<style>
+		body {
+			margin: 20px;
+			font: sans-serif;
+		}
+		.layout {
+			margin: 0 auto;
+			max-width: 700px;
+		}
+		section {
+			display: flex;
+			flex-flow: row;
+		}
+		.channel {
+			flex: 0 0 50%;
+			margin: 10px;
+		}
+		.eventlog {
+			border: 1px solid #777;
+		  overflow: scroll;
+			height: 200px;
+		}
+	</style>
+</head>
+<body class='online'>
+	<div class="layout">
+
+	<h1>SSE pubsub for nodeJS</h1>
+
+	<p>This page connects to two SSE streams, and outputs the events to the log containers below as they are received.</p>
+
+	<section>
+		<div class='channel'>
+			<h2>Channel 1</h2>
+			<div class='eventlog' data-channel='ch1'></div>
+		</div>
+		<div class='channel'>
+			<h2>Channel 2</h2>
+			<div class='eventlog' data-channel='ch2'></div>
+		</div>
+	</section>
+</body>
+<script src='moment.js'></script>
+<script>
+	Array.from(document.querySelectorAll('[data-channel]')).forEach(el => {
+		const channelName = el.dataset.channel;
+		const es = new EventSource("/stream/"+channelName);
+		es.addEventListener('myEvent', ev => {
+			const data = JSON.parse(ev.data);
+			const logLine = document.createElement('div');
+			logLine.innerHTML = moment().format('HH:mm:ss') + ': ' + data.newVal;
+			el.appendChild(logLine);
+			el.scrollTop = 9999999;
+		});
+	});
+</script>
+</html>

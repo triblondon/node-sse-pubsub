@@ -1,0 +1,32 @@
+{
+  "name": "sse-pubsub",
+  "version": "1.0.0",
+  "description": "Server-sent events with pub/sub interface",
+  "main": "index.js",
+  "scripts": {
+		"test": "mocha test/tests.js",
+		"start": "node demo/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/triblondon/node-sse-pubsub.git"
+  },
+  "keywords": [
+    "sse",
+    "http",
+    "server",
+    "pubsub"
+  ],
+  "author": "Andrew Betts <andrew@trib.tv>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/triblondon/node-sse-pubsub/issues"
+  },
+  "homepage": "https://github.com/triblondon/node-sse-pubsub#readme",
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "express": "^4.15.4",
+    "mocha": "^3.5.0",
+    "node-fetch": "^1.7.3"
+  }
+}

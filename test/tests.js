@@ -1,0 +1,197 @@
+
+const expect = require('chai').expect;
+
+const fetch = require('node-fetch');
+const http = require('http');
+const SSEChannel = require('../index');
+const PORT = process.env.PORT || 3102;
+const URL = "http://localhost:"+PORT+"/stream";
+
+const setupServer = (() => {
+	let app, server, sockets;
+	return async sseOptions => {
+		return new Promise(resolve => {
+			if (server) {
+				sockets.forEach(s => s.destroy());
+				server.close(() => {
+					server = null;
+					resolve(setupServer(sseOptions));
+				});
+			} else {
+				const sse = new SSEChannel(sseOptions);
+				sockets = [];
+				server = http.createServer((req, res) => {
+					if (req.url == '/stream') sse.subscribe(req, res);
+				});
+				server.listen(PORT, () => resolve(sse));
+				server.on('connection', s => sockets.push(s));
+			}
+		});
+	};
+})();
+
+const nextChunk = async body => {
+	return new Promise(resolve => {
+		body.on('data', chunk => resolve(chunk.toString()));
+	});
+};
+
+const measureTime = async pr => {
+	const start = Date.now();
+	await pr;
+	const end = Date.now();
+	return end - start;
+};
+
+
+describe('SSEChannel', function () {
+
+	it('should return 200 OK status', async function () {
+		await setupServer();
+    let res = await fetch(URL);
+    expect(res.status).to.equal(200);
+	});
+
+	it('should have correct content-type', async function () {
+		await setupServer();
+		let res = await fetch(URL);
+    expect(res.headers.get('content-type')).to.equal('text/event-stream');
+	});
+
+	it('should be server-cachable for the duration of the stream', async function () {
+		await setupServer({maxStreamDuration:20000});
+		let res = await fetch(URL);
+    expect(res.headers.get('cache-control')).to.contain('s-maxage=19');
+	});
+
+	it('should not be client-cachable', async function () {
+		await setupServer({maxStreamDuration:20000});
+		let res = await fetch(URL);
+    expect(res.headers.get('cache-control')).to.contain('max-age=0');
+	});
+
+	it('should include retry in first response chunk', async function () {
+		let res, chunk;
+		await setupServer();
+		res = await fetch(URL);
+		chunk = await nextChunk(res.body);
+		expect(chunk).to.match(/retry:\s*\d{4,6}\n/);
+
+		await setupServer({clientRetryInterval:1234});
+		res = await fetch(URL);
+		chunk = await nextChunk(res.body);
+		expect(chunk).to.match(/retry:\s*1234\n/);
+	});
+
+	it('should close the connection at maxStreamDuration', async function () {
+		await setupServer({maxStreamDuration:1500});
+		let elapsed = await measureTime(fetch(URL).then(res => res.text()));
+		expect(elapsed).to.be.approximately(1500, 30);
+	});
+
+	it('should start at startId', async function () {
+		let sse, res, output;
+		sse = await setupServer();
+		res = await fetch(URL);
+		await nextChunk(res.body);
+		sse.publish('something');
+		output = await nextChunk(res.body);
+		expect(output).to.match(/id:\s*1\n/);
+		expect(output).to.match(/data:\s*something\n/);
+		sse.publish('something else');
+		output = await nextChunk(res.body);
+		expect(output).to.match(/id:\s*2\n/);
+		expect(output).to.match(/data:\s*something else\n/);
+		sse = await setupServer({startId: 8777});
+		res = await fetch(URL);
+		await nextChunk(res.body);
+		sse.publish('something');
+		output = await nextChunk(res.body);
+		expect(output).to.match(/id:\s*8777\n/);
+		expect(output).to.match(/data:\s*something\n/);
+	});
+
+	it('should ping at pingInterval', async function () {
+		await setupServer({pingInterval:500});
+		let res = await fetch(URL);
+		await nextChunk(res.body)
+		let chunkPromise = nextChunk(res.body);
+		let elapsed = await measureTime(chunkPromise);
+		let output = await chunkPromise;
+		expect(elapsed).to.be.approximately(500, 30);
+		expect(output).to.match(/data:\s*\n\n/);
+		expect(output).to.not.contain('event:');
+		expect(output).to.not.contain('id:');
+	});
+
+	it('should output a retry number', async function () {
+		await setupServer({clientRetryInterval:4321});
+		let res = await fetch(URL);
+		let chunk = await nextChunk(res.body);
+		expect(chunk).to.match(/retry:\s*4321\n\n/);
+	});
+
+	it('should include event name if specified', async function () {
+		let chunk;
+		let sse = await setupServer();
+		let res = await fetch(URL);
+		await nextChunk(res.body)
+		sse.publish('no-event-name');
+		chunk = await nextChunk(res.body);
+		expect(chunk).to.not.contain('event:');
+		sse.publish('with-event-name', 'myEvent');
+		chunk = await nextChunk(res.body);
+		expect(chunk).to.match(/event:\s*myEvent\n/);
+	});
+
+	it('should include previous events if last-event-id is specified', async function () {
+		let sse = await setupServer();
+		for (let i=1; i<=10; i++) {
+			sse.publish('event-'+i);
+		}
+		let res = await fetch(URL, {headers: {'Last-Event-ID': 4}});
+		let output = await nextChunk(res.body);
+		let events = output.split('\n\n').filter(str => str.includes('id:'));
+		expect(events.length).to.equal(6);
+		expect(events[0]).to.match(/id:\s*5\n/);
+	});
+
+	it('should limit history length to historySize', async function () {
+		let sse = await setupServer({historySize:5});
+		for (let i=1; i<=10; i++) {
+			sse.publish('event-'+i);
+		}
+		let res = await fetch(URL, {headers: {'Last-Event-ID': 2}});
+		let output = await nextChunk(res.body);
+		let events = output.split('\n\n').filter(str => str.includes('id:'));
+		expect(events.length).to.equal(5);
+		expect(events[0]).to.match(/id:\s*6\n/);
+	});
+
+	it('should serialise non scalar values as JSON', async function () {
+		let testdata = {foo:42};
+		let sse = await setupServer();
+		let res = await fetch(URL);
+		await nextChunk(res.body);
+		sse.publish(testdata);
+		let chunk = await nextChunk(res.body);
+		expect(chunk).to.contain(JSON.stringify(testdata));
+	});
+
+	it('should list connected clients by IP address', async function () {
+		let sse = await setupServer();
+		let res1 = await fetch(URL);
+		let res2 = await fetch(URL);
+		expect(sse.listClients()).to.eql({
+			'::ffff:127.0.0.1': 2
+		});
+	});
+
+	it('should count connected clients', async function () {
+		let sse = await setupServer();
+		let res1 = await fetch(URL);
+		let res2 = await fetch(URL);
+		expect(sse.getSubscriberCount()).to.equal(2);
+	});
+
+});
