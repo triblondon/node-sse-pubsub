@@ -6,10 +6,11 @@ module.exports = class SSEChannel {
 			maxStreamDuration: 30000,
 			clientRetryInterval: 1000,
 			startId: 1,
-			historySize: 100
+			historySize: 100,
+			rewind: 0
 		}, options);
 
-		this.msgID = this.options.startId;
+		this.nextID = this.options.startId;
 		this.clients = new Set();
 		this.messages = [];
 
@@ -19,7 +20,7 @@ module.exports = class SSEChannel {
 	}
 
 	publish(data, eventName) {
-		const thisID = this.msgID++;
+		const thisID = this.nextID;
 		if (typeof data === "object") data = JSON.stringify(data);
 		data = data ? data.split(/[\r\n]+/).map(str => 'data: '+str).join('\n') : '';
 
@@ -34,6 +35,7 @@ module.exports = class SSEChannel {
 		while (this.messages.length > this.options.historySize) {
 			this.messages.shift();
 		}
+		this.nextID++;
 	}
 
 	subscribe(req, res) {
@@ -46,10 +48,10 @@ module.exports = class SSEChannel {
 		});
 		let body = "retry: " + this.options.clientRetryInterval + '\n\n';
 
-		const lastID = Number.parseInt(req.headers['last-event-id']);
-		if (!Number.isNaN(lastID)) {
-			const rewind = -(this.msgID-lastID-1);
-			this.messages.slice(rewind).forEach(output => {
+		const lastID = Number.parseInt(req.headers['last-event-id'], 10);
+		const rewind = (!Number.isNaN(lastID)) ? ((this.nextID-1)-lastID) : this.options.rewind;
+		if (rewind) {
+			this.messages.slice(0-rewind).forEach(output => {
 				body += output
 			});
 		}

@@ -194,4 +194,27 @@ describe('SSEChannel', function () {
 		expect(sse.getSubscriberCount()).to.equal(2);
 	});
 
+	it('should understand the rewind option', async function () {
+		let sse, res, output;
+		sse = await setupServer({rewind: 2});
+		sse.publish('message-1');
+		sse.publish('message-2');
+		sse.publish('message-3');
+		res = await fetch(URL);
+		output = await nextChunk(res.body);
+		expect(output).to.not.include('message-1');
+		expect(output).to.include('message-2');
+		expect(output).to.include('message-3');
+
+		sse = await setupServer({rewind: 6});
+		sse.publish('message-1');
+		sse.publish('message-2');
+		sse.publish('message-3');
+		res = await fetch(URL);
+		output = await nextChunk(res.body);
+		expect(output).to.include('message-1');
+		expect(output).to.include('message-2');
+		expect(output).to.include('message-3');
+	});
+
 });

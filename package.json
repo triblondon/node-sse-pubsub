@@ -4,8 +4,8 @@
   "description": "Server-sent events with pub/sub interface",
   "main": "index.js",
   "scripts": {
-		"test": "mocha test/tests.js",
-		"start": "node demo/server.js"
+    "test": "mocha test/tests.js",
+    "start": "node demo/server.js"
   },
   "repository": {
     "type": "git",
