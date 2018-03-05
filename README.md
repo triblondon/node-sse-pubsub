@@ -75,6 +75,8 @@ Publishes a new event to all subscribers to the channel.
 
 Since all events published to a channel will be sent to all subscribers to that channel, if you want to filter events that are of interest to only a subset of users, it makes sense to use multiple separate channel instances.  However, `eventName` is useful if you are sending events that are all relevant to all subscribers, but might need to be processed by different client-side handlers.  Event names can therefore be considered to be like method names of a method that you are invoking in the client-side code.
 
+Returns the ID of the new message.
+
 ### `unsubscribe(clientRef)`
 
 Detaches an active HTTP connection from the channel.
