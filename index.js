@@ -36,6 +36,8 @@ module.exports = class SSEChannel {
 			this.messages.shift();
 		}
 		this.nextID++;
+
+		return thisID;
 	}
 
 	subscribe(req, res) {

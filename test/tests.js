@@ -89,6 +89,21 @@ describe('SSEChannel', function () {
 		expect(elapsed).to.be.approximately(1500, 30);
 	});
 
+	it('should return an ID from publish', async function () {
+		let sse, res, output, firstID, secondID, matches;
+		sse = await setupServer();
+		res = await fetch(URL);
+		await nextChunk(res.body);
+		firstID = sse.publish('first');
+		output = await nextChunk(res.body);
+		expect((new RegExp(`id:\\s*${firstID}\\b`)).test(output)).to.be.true;
+		secondID = sse.publish('second');
+		output = await nextChunk(res.body);
+		expect((new RegExp(`id:\\s*${secondID}\\b`)).test(output)).to.be.true;
+		expect(secondID).to.equal(firstID+1);
+	});
+
+
 	it('should start at startId', async function () {
 		let sse, res, output;
 		sse = await setupServer();
