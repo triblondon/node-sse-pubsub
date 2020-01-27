@@ -20,28 +20,28 @@ module.exports = class SSEChannel {
 	}
 
 	publish(data, eventName) {
-		const thisID = this.nextID;
+		const id = this.nextID;
 		if (typeof data === "object") data = JSON.stringify(data);
 		data = data ? data.split(/[\r\n]+/).map(str => 'data: '+str).join('\n') : '';
 
 		const output = (
-			(data ? "id: " + thisID + "\n" : "") +
+			(data ? "id: " + id + "\n" : "") +
 			(eventName ? "event: " + eventName + "\n" : "") +
 			(data || "data: ") + '\n\n'
 		);
-		this.clients.forEach(c => c.res.write(output));
+		[...this.clients].filter(c => !eventName || hasEventMatch(c.events, eventName)).forEach(c => c.res.write(output));
 
-		this.messages.push(output);
+		this.messages.push({ id, eventName, output });
 		while (this.messages.length > this.options.historySize) {
 			this.messages.shift();
 		}
 		this.nextID++;
 
-		return thisID;
+		return id;
 	}
 
-	subscribe(req, res) {
-		const c = {req, res};
+	subscribe(req, res, events) {
+		const c = {req, res, events};
 		c.req.socket.setNoDelay(true);
 		c.res.writeHead(200, {
 			"Content-Type": "text/event-stream",
@@ -53,8 +53,8 @@ module.exports = class SSEChannel {
 		const lastID = Number.parseInt(req.headers['last-event-id'], 10);
 		const rewind = (!Number.isNaN(lastID)) ? ((this.nextID-1)-lastID) : this.options.rewind;
 		if (rewind) {
-			this.messages.slice(0-rewind).forEach(output => {
-				body += output
+			this.messages.filter(m => hasEventMatch(c.events, m.eventName)).slice(0-rewind).forEach(m => {
+				body += m.output
 			});
 		}
 
@@ -91,3 +91,7 @@ module.exports = class SSEChannel {
 		return this.clients.size;
 	}
 };
+
+function hasEventMatch(subscriptionList, eventName) {
+	return !subscriptionList || subscriptionList.some(pat => pat instanceof RegExp ? pat.test(eventName) : pat === eventName);
+}

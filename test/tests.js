@@ -9,19 +9,19 @@ const URL = "http://localhost:"+PORT+"/stream";
 
 const setupServer = (() => {
 	let app, server, sockets;
-	return async sseOptions => {
+	return async (sseOptions, subsOptions) => {
 		return new Promise(resolve => {
 			if (server) {
 				sockets.forEach(s => s.destroy());
 				server.close(() => {
 					server = null;
-					resolve(setupServer(sseOptions));
+					resolve(setupServer(sseOptions, subsOptions));
 				});
 			} else {
 				const sse = new SSEChannel(sseOptions);
 				sockets = [];
 				server = http.createServer((req, res) => {
-					if (req.url == '/stream') sse.subscribe(req, res);
+					if (req.url == '/stream') sse.subscribe(req, res, subsOptions);
 				});
 				server.listen(PORT, () => resolve(sse));
 				server.on('connection', s => sockets.push(s));
@@ -103,7 +103,6 @@ describe('SSEChannel', function () {
 		expect(secondID).to.equal(firstID+1);
 	});
 
-
 	it('should start at startId', async function () {
 		let sse, res, output;
 		sse = await setupServer();
@@ -157,6 +156,21 @@ describe('SSEChannel', function () {
 		sse.publish('with-event-name', 'myEvent');
 		chunk = await nextChunk(res.body);
 		expect(chunk).to.match(/event:\s*myEvent\n/);
+	});
+
+	it('should include only events the subscriber has specified', async function () {
+		let chunk;
+		let sse = await setupServer({ pingInterval: 500 }, ['event-1']);
+		let res = await fetch(URL);
+		await nextChunk(res.body)
+		sse.publish('foo', 'event-1');
+		sse.publish('bar', 'event-2');
+		chunk = await nextChunk(res.body);
+		expect(chunk).to.contain('event-1');
+		expect(chunk).to.not.contain('event-2');
+		sse.publish('baz', 'event-3');
+		chunk = await nextChunk(res.body);
+		expect(chunk).to.not.contain('event-3');
 	});
 
 	it('should include previous events if last-event-id is specified', async function () {

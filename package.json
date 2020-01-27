@@ -24,9 +24,9 @@
   },
   "homepage": "https://github.com/triblondon/node-sse-pubsub#readme",
   "devDependencies": {
-    "chai": "^4.1.2",
-    "express": "^4.15.4",
-    "mocha": "^3.5.0",
-    "node-fetch": "^1.7.3"
+    "chai": "^4.2.0",
+    "express": "^4.17.1",
+    "mocha": "^7.0.1",
+    "node-fetch": "^2.6.0"
   }
 }

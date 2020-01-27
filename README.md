@@ -54,12 +54,13 @@ const channel = new SSEChannel({
 });
 ```
 
-### `subscribe(req, res)`
+### `subscribe(req, res, [events])`
 
 Attaches an inbound HTTP request to an SSE channel.  Usually used in conjuction with a framework like Express.  Returns a reference for the client.
 
 * `req`: A NodeJS `IncomingMessage` object or anything that inherits from it
 * `res`: A NodeJS `ServerResponse` object or anything that inherits from it
+* `events`: Optional, an array of event names to deliver to this subscriber.  If not provided, the subscriber will receive all events.
 
 ```javascript
 const channel = new SSEChannel();
