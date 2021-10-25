@@ -1,10 +1,11 @@
 {
   "name": "sse-pubsub",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Server-sent events with pub/sub interface",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "mocha test/tests.js",
+    "test": "mocha test/tests.js --exit",
     "start": "node demo/server.js"
   },
   "repository": {
@@ -24,9 +25,9 @@
   },
   "homepage": "https://github.com/triblondon/node-sse-pubsub#readme",
   "devDependencies": {
-    "chai": "^4.2.0",
+    "chai": "^4.3.4",
     "express": "^4.17.1",
-    "mocha": "^7.0.1",
-    "node-fetch": "^2.6.0"
+    "mocha": "^9.1.3",
+    "node-fetch": "^3.0.0"
   }
 }
