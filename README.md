@@ -84,6 +84,10 @@ Detaches an active HTTP connection from the channel.
 
 * `clientRef` (object): A reference to an object obtained by calling the `subscribe` method.
 
+### `close()`
+
+Closes all subscriber connections, deletes message history and stops ping timer.  If you intend to create temporary channels, ensure you close them before dereferencing, otherwise timers and HTTP clients may cause memory leaks.
+
 ### `listClients()`
 
 Returns an object where the keys are the remote addresses of each connected client, and the values are the number of connections from that address.

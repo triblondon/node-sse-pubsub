@@ -1,4 +1,9 @@
-module.exports = class SSEChannel {
+
+function hasEventMatch(subscriptionList, eventName) {
+	return !subscriptionList || subscriptionList.some(pat => pat instanceof RegExp ? pat.test(eventName) : pat === eventName);
+}
+
+class SSEChannel {
 
 	constructor(options) {
 		this.options = Object.assign({}, {
@@ -13,6 +18,7 @@ module.exports = class SSEChannel {
 		this.nextID = this.options.startId;
 		this.clients = new Set();
 		this.messages = [];
+		this.active = true;
 
 		if (this.options.pingInterval) {
 			this.pingTimer = setInterval(() => this.publish(), this.options.pingInterval);
@@ -20,27 +26,35 @@ module.exports = class SSEChannel {
 	}
 
 	publish(data, eventName) {
-		const id = this.nextID;
-		if (typeof data === "object") data = JSON.stringify(data);
-		data = data ? data.split(/[\r\n]+/).map(str => 'data: '+str).join('\n') : '';
+		if (!this.active) throw new Error('Channel closed');
+		let output;
+		let id;
+		if (!data && !eventName) {
+			if (!this.clients.size) return; // No need to create a ping entry if there are no clients connected
+			output = "data: \n\n";
+		} else {
+			id = this.nextID++;
+			if (typeof data === "object") data = JSON.stringify(data);
+			data = data ? data.split(/[\r\n]+/).map(str => 'data: '+str).join('\n') : '';
+			output = (
+				"id: " + id + "\n" +
+				(eventName ? "event: " + eventName + "\n" : "") +
+				(data || "data: ") + '\n\n'
+			);
+			this.messages.push({ id, eventName, output });
+		}
 
-		const output = (
-			(data ? "id: " + id + "\n" : "") +
-			(eventName ? "event: " + eventName + "\n" : "") +
-			(data || "data: ") + '\n\n'
-		);
 		[...this.clients].filter(c => !eventName || hasEventMatch(c.events, eventName)).forEach(c => c.res.write(output));
 
-		this.messages.push({ id, eventName, output });
 		while (this.messages.length > this.options.historySize) {
 			this.messages.shift();
 		}
-		this.nextID++;
 
 		return id;
 	}
 
 	subscribe(req, res, events) {
+		if (!this.active) throw new Error('Channel closed');
 		const c = {req, res, events};
 		c.req.socket.setNoDelay(true);
 		c.res.writeHead(200, {
@@ -75,6 +89,14 @@ module.exports = class SSEChannel {
 		this.clients.delete(c);
 	}
 
+	close() {
+		this.clients.forEach(c => c.res.end());
+		this.clients = new Set();
+		this.messages = [];
+		if (this.pingTimer) clearInterval(this.pingTimer);
+		this.active = false;
+	}
+
 	listClients() {
 		const rollupByIP = {};
 		this.clients.forEach(c => {
@@ -92,6 +114,4 @@ module.exports = class SSEChannel {
 	}
 };
 
-function hasEventMatch(subscriptionList, eventName) {
-	return !subscriptionList || subscriptionList.some(pat => pat instanceof RegExp ? pat.test(eventName) : pat === eventName);
-}
+export default SSEChannel;
