@@ -3,7 +3,7 @@ function hasEventMatch(subscriptionList, eventName) {
 	return !subscriptionList || subscriptionList.some(pat => pat instanceof RegExp ? pat.test(eventName) : pat === eventName);
 }
 
-class SSEChannel {
+module.exports = class SSEChannel {
 
 	constructor(options) {
 		this.options = Object.assign({}, {
@@ -113,5 +113,3 @@ class SSEChannel {
 		return this.clients.size;
 	}
 };
-
-export default SSEChannel;

@@ -1,11 +1,10 @@
 {
   "name": "sse-pubsub",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Server-sent events with pub/sub interface",
   "main": "index.js",
-  "type": "module",
   "scripts": {
-    "test": "mocha test/tests.js --exit",
+    "test": "mocha test/tests.mjs --exit",
     "start": "node demo/server.js"
   },
   "repository": {
