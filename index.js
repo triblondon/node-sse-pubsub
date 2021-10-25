@@ -21,10 +21,7 @@ class SSEChannel {
 		this.active = true;
 
 		if (this.options.pingInterval) {
-			this.pingTimer = setInterval(() => {
-				this.publish();
-				console.log('ping!');
-			}, this.options.pingInterval);
+			this.pingTimer = setInterval(() => this.publish(), this.options.pingInterval);
 		}
 	}
 
