@@ -59,7 +59,7 @@ module.exports = class SSEChannel {
 		c.req.socket.setNoDelay(true);
 		c.res.writeHead(200, {
 			"Content-Type": "text/event-stream",
-			"Cache-Control": "s-maxage="+(Math.floor(this.options.maxStreamDuration/1000)-1)+", max-age=0, stale-while-revalidate=0, stale-if-error=0",
+			"Cache-Control": "s-maxage="+(Math.floor(this.options.maxStreamDuration/1000)-1)+", max-age=0, stale-while-revalidate=0, stale-if-error=0, no-transform",
 			"Connection": "keep-alive"
 		});
 		let body = "retry: " + this.options.clientRetryInterval + '\n\n';
