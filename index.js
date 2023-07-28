@@ -12,7 +12,8 @@ module.exports = class SSEChannel {
 			clientRetryInterval: 1000,
 			startId: 1,
 			historySize: 100,
-			rewind: 0
+			rewind: 0,
+			cors: false
 		}, options);
 
 		this.nextID = this.options.startId;
@@ -56,12 +57,16 @@ module.exports = class SSEChannel {
 	subscribe(req, res, events) {
 		if (!this.active) throw new Error('Channel closed');
 		const c = {req, res, events};
-		c.req.socket.setNoDelay(true);
-		c.res.writeHead(200, {
+		const headers = {
 			"Content-Type": "text/event-stream",
 			"Cache-Control": "s-maxage="+(Math.floor(this.options.maxStreamDuration/1000)-1)+", max-age=0, stale-while-revalidate=0, stale-if-error=0, no-transform",
 			"Connection": "keep-alive"
-		});
+		}
+		if (this.options.cors) {
+			headers['access-control-allow-origin'] = "*";
+		}
+		c.req.socket.setNoDelay(true);
+		c.res.writeHead(200, headers);
 		let body = "retry: " + this.options.clientRetryInterval + '\n\n';
 
 		const lastID = Number.parseInt(req.headers['last-event-id'], 10);

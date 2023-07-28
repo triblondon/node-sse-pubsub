@@ -46,6 +46,7 @@ Creates a new `SSEChannel`.  Available options are:
 * `startId` (integer): ID to use for the first message on the channel.  Default is 1.
 * `historySize` (integer): Number of messages to keep in memory, allowing for clients to use the `Last-Event-ID` header to request events that occured before they joined the stream.  Default is 100.
 * `rewind` (integer): Number of messages to backtrack by default when serving a new subscriber that does not include a `Last-Event-ID` in their request. If request includes `Last-Event-ID`, the `rewind` option is ignored.
+* `cors` (boolean): Set to `true` to include an `Access-Control-Allow-Origin: *` header on the response.  Default false.
 
 ```javascript
 const channel = new SSEChannel({
