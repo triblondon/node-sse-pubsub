@@ -1,6 +1,6 @@
 {
   "name": "sse-pubsub",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "Server-sent events with pub/sub interface",
   "main": "index.js",
   "scripts": {
